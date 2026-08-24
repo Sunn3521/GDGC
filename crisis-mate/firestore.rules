@@ -19,13 +19,16 @@ service cloud.firestore {
 
       // Trusted Contacts subcollection rules
       match /trustedContacts/{contactId} {
-        // Only the owner can manage their trusted contacts
         allow read, write: if isOwner(userId);
       }
 
       // Emergency Sessions subcollection rules
       match /emergencySessions/{sessionId} {
-        // Only the owner can store and read their emergency history
+        allow read, write: if isOwner(userId);
+      }
+
+      // SOS Events subcollection rules
+      match /sosEvents/{sosId} {
         allow read, write: if isOwner(userId);
       }
     }

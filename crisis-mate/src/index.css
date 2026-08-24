@@ -1,0 +1,36 @@
+/* ─── CrisisMate Foundation CSS ─────────────────────────────────────── */
+:root {
+  --color-bg: #0f0f1a;
+  --color-surface: #1a1a2e;
+  --color-border: #2d2d44;
+  --color-text: #e8e8f0;
+  --color-text-muted: #7777aa;
+
+  --color-critical: #dc2626;
+  --color-high: #ea580c;
+  --color-medium: #ca8a04;
+  --color-low: #16a34a;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --radius: 0.75rem;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}

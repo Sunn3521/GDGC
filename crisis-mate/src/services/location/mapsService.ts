@@ -1,13 +1,13 @@
 /**
- * CrisisMate — Google Maps & Emergency Nearby Help Service
+ * CrisisMate — Google Maps & Nearby Help Service
  *
- * Computes distances to nearby emergency services (Hospitals, Police, Fire Stations)
- * and generates navigation links without hardcoding fake phone numbers.
+ * Discovers nearby emergency services via Google Places API (when API key is provided)
+ * or provides direct Google Maps search and turn-by-turn navigation URLs.
+ * Never fabricates fake places or fake phone numbers.
  */
 
 import type { UserCoordinates, NearbyService, EmergencyServiceType } from '../../types/location';
 
-// Haversine formula to compute distance in meters between coordinates
 export function calculateDistanceMeters(
   lat1: number,
   lon1: number,
@@ -34,6 +34,17 @@ export function setMockNearbyServices(services: NearbyService[] | null): void {
   _mockServices = services;
 }
 
+export function isPlacesApiConfigured(): boolean {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      return Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+    }
+  } catch {
+    // Ignore error
+  }
+  return false;
+}
+
 /**
  * Search nearby emergency services based on user location.
  */
@@ -47,61 +58,80 @@ export async function searchNearbyServices(
     );
   }
 
-  // Generate realistic nearby services based on user coordinates offset
   const baseLat = userCoords.latitude;
   const baseLng = userCoords.longitude;
 
-  const defaultEmergencyPlaces: Omit<NearbyService, 'distanceMeters' | 'navigationUrl'>[] = [
+  // 1. Try Google Places Nearby Search API if key is present
+  const apiKey = isPlacesApiConfigured()
+    ? (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string)
+    : '';
+
+  if (apiKey) {
+    try {
+      const typeKeyword = serviceType === 'HOSPITAL' ? 'hospital' : serviceType === 'POLICE' ? 'police' : 'fire_station';
+      const placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${baseLat},${baseLng}&radius=5000&type=${typeKeyword}&key=${apiKey}`;
+
+      const res = await fetch(placesUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results && Array.isArray(data.results)) {
+          return data.results.map((p: any) => ({
+            id: p.place_id,
+            name: p.name,
+            type: serviceType === 'ALL' ? 'HOSPITAL' : serviceType,
+            address: p.vicinity || 'Address available on Google Maps',
+            latitude: p.geometry?.location?.lat || baseLat,
+            longitude: p.geometry?.location?.lng || baseLng,
+            distanceMeters: calculateDistanceMeters(
+              baseLat,
+              baseLng,
+              p.geometry?.location?.lat || baseLat,
+              p.geometry?.location?.lng || baseLng
+            ),
+            navigationUrl: `https://www.google.com/maps/dir/?api=1&destination=${p.geometry?.location?.lat},${p.geometry?.location?.lng}`,
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn('[CrisisMate Maps] Places API fetch failed, falling back to direct navigation:', err);
+    }
+  }
+
+  // 2. Direct Google Maps Navigation Fallback (No fake places fabricated)
+  const defaultServices: NearbyService[] = [
     {
-      id: 'hosp_1',
-      name: 'City Emergency & Trauma General Hospital',
+      id: 'maps_hosp',
+      name: 'Search Nearest Hospital on Google Maps',
       type: 'HOSPITAL',
-      address: 'Near Central Circle Road',
-      latitude: baseLat + 0.0075,
-      longitude: baseLng + 0.005,
-      phone: '+911123456789',
-      isOpenNow: true,
+      address: 'Live navigation assistance for nearest emergency hospital.',
+      latitude: baseLat,
+      longitude: baseLng,
+      distanceMeters: 0,
+      navigationUrl: `https://www.google.com/maps/search/emergency+hospital/@${baseLat},${baseLng},14z`,
     },
     {
-      id: 'pol_1',
-      name: 'Central Police Station & Control Room',
+      id: 'maps_police',
+      name: 'Search Nearest Police Station on Google Maps',
       type: 'POLICE',
-      address: 'Main Station Road',
-      latitude: baseLat - 0.005,
-      longitude: baseLng + 0.003,
-      phone: '100',
-      isOpenNow: true,
+      address: 'Live navigation assistance for nearest police control station.',
+      latitude: baseLat,
+      longitude: baseLng,
+      distanceMeters: 0,
+      navigationUrl: `https://www.google.com/maps/search/police+station/@${baseLat},${baseLng},14z`,
     },
     {
-      id: 'fire_1',
-      name: 'Municipal Fire & Rescue Service Headquarters',
+      id: 'maps_fire',
+      name: 'Search Nearest Fire Station on Google Maps',
       type: 'FIRE_STATION',
-      address: 'Industrial Safety Avenue',
-      latitude: baseLat + 0.003,
-      longitude: baseLng - 0.008,
-      phone: '101',
-      isOpenNow: true,
+      address: 'Live navigation assistance for nearest fire and rescue station.',
+      latitude: baseLat,
+      longitude: baseLng,
+      distanceMeters: 0,
+      navigationUrl: `https://www.google.com/maps/search/fire+station/@${baseLat},${baseLng},14z`,
     },
   ];
 
-  const results: NearbyService[] = defaultEmergencyPlaces
-    .filter((place) => serviceType === 'ALL' || place.type === serviceType)
-    .map((place) => {
-      const distanceMeters = calculateDistanceMeters(
-        baseLat,
-        baseLng,
-        place.latitude,
-        place.longitude
-      );
-      const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`;
-
-      return {
-        ...place,
-        distanceMeters,
-        navigationUrl,
-      };
-    })
-    .sort((a, b) => a.distanceMeters - b.distanceMeters);
-
-  return results;
+  return defaultServices.filter(
+    (s) => serviceType === 'ALL' || s.type === serviceType
+  );
 }

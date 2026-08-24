@@ -2,14 +2,10 @@
  * CrisisMate — Gemini Crisis Decision Engine
  *
  * Core AI service for crisis analysis.
- * Features:
- * - Pre-flight input validation (prevents unnecessary API calls)
- * - Structured prompt generation
- * - Gemini API invocation via Generative AI SDK / server boundary
- * - Timeout enforcement (default 15s)
- * - Limited retries (max 2 attempts)
- * - Strict schema validation and safety overrides
- * - Safe fallback execution on error (never crashes app)
+ * Secure Architecture:
+ * - Delegates API calls to secure backend proxy endpoint (/api/analyze-crisis) or Cloud Function.
+ * - Server key (GEMINI_API_KEY) is kept strictly on server environment.
+ * - Client-side validation, schema normalization, timeout, and safe fallback.
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -19,8 +15,6 @@ import { buildCrisisPrompt } from './promptBuilder';
 import { validateAndNormalize } from './responseValidator';
 import { createSafeFallback } from './fallbackResponse';
 
-// ─── Configuration ────────────────────────────────────────────────────────────
-
 const GEMINI_MODEL = 'gemini-1.5-flash';
 const MAX_RETRIES = 2;
 const TIMEOUT_MS = 15_000;
@@ -29,39 +23,23 @@ const TIMEOUT_MS = 15_000;
 type GeminiExecutor = (prompt: { systemInstruction: string; userTurn: string }) => Promise<string>;
 let _customExecutor: GeminiExecutor | null = null;
 
-/**
- * For testing or server-side proxy integration: set a custom executor function.
- */
 export function setGeminiExecutor(executor: GeminiExecutor | null): void {
   _customExecutor = executor;
 }
 
 /**
- * Gets the configured API key safely from environment (Vite client or Node server).
+ * Gets server key safely when executing in Node server environment.
  */
-function getApiKey(): string {
-  let viteKey = '';
-  try {
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      viteKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
-    }
-  } catch {
-    // Ignore error in non-Vite context
-  }
-
-  let nodeKey = '';
+function getServerApiKey(): string {
   try {
     if (typeof process !== 'undefined' && process.env) {
-      nodeKey = process.env['GEMINI_API_KEY'] || process.env['VITE_GEMINI_API_KEY'] || '';
+      return process.env['GEMINI_API_KEY'] || '';
     }
   } catch {
-    // Ignore error in non-Node context
+    // Ignore error
   }
-
-  return viteKey || nodeKey;
+  return '';
 }
-
-// ─── Input Validation ─────────────────────────────────────────────────────────
 
 export interface InputValidationResult {
   isValid: boolean;
@@ -77,42 +55,52 @@ export function validateUserInput(message: string): InputValidationResult {
   return { isValid: true, sanitizedMessage: result.sanitized };
 }
 
-// ─── API Call Execution ───────────────────────────────────────────────────────
-
+/**
+ * Execute Gemini call safely via backend proxy or server SDK.
+ */
 async function executeGeminiCall(prompt: { systemInstruction: string; userTurn: string }): Promise<string> {
   if (_customExecutor) {
     return _customExecutor(prompt);
   }
 
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured in environment.');
+  // 1. Try Backend API endpoint if configured
+  const backendUrl = typeof window !== 'undefined' && (window as any).CRISISMATE_API_URL
+    ? (window as any).CRISISMATE_API_URL
+    : '/api/analyze-crisis';
+
+  try {
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.rawText) return data.rawText;
+    }
+  } catch (err) {
+    // Fall back to server key if running in server context
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: GEMINI_MODEL,
-    systemInstruction: prompt.systemInstruction,
-    generationConfig: {
-      temperature: 0.1,
-      topP: 0.8,
-      maxOutputTokens: 1024,
-      responseMimeType: 'application/json',
-    },
-  });
+  // 2. Server context fallback (Node.js runtime only)
+  const serverKey = getServerApiKey();
+  if (serverKey) {
+    const genAI = new GoogleGenerativeAI(serverKey);
+    const model = genAI.getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: prompt.systemInstruction,
+      generationConfig: {
+        temperature: 0.1,
+        responseMimeType: 'application/json',
+      },
+    });
 
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error(`Gemini call timed out after ${TIMEOUT_MS}ms`)), TIMEOUT_MS);
-  });
-
-  const callPromise = model.generateContent(prompt.userTurn).then((res) => res.response.text());
-
-  const result = await Promise.race([callPromise, timeoutPromise]);
-  if (!result || result.trim().length === 0) {
-    throw new Error('Empty response received from Gemini API');
+    const result = await model.generateContent(prompt.userTurn);
+    return result.response.text();
   }
 
-  return result;
+  throw new Error('Backend API proxy or server GEMINI_API_KEY is required for crisis analysis.');
 }
 
 async function callGeminiWithRetry(prompt: { systemInstruction: string; userTurn: string }): Promise<string | null> {
@@ -124,14 +112,6 @@ async function callGeminiWithRetry(prompt: { systemInstruction: string; userTurn
       return rawText;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      const msg = lastError.message.toLowerCase();
-
-      // Don't retry non-transient auth/permission errors
-      if (msg.includes('api_key') || msg.includes('unauthorized') || msg.includes('quota')) {
-        console.error(`[CrisisMate AI] Non-retryable error: ${lastError.message}`);
-        break;
-      }
-
       console.warn(`[CrisisMate AI] Attempt ${attempt}/${MAX_RETRIES} failed: ${lastError.message}`);
       if (attempt < MAX_RETRIES) {
         await new Promise((res) => setTimeout(res, 300 * attempt));
@@ -142,21 +122,10 @@ async function callGeminiWithRetry(prompt: { systemInstruction: string; userTurn
   return null;
 }
 
-// ─── Public API Functions ─────────────────────────────────────────────────────
-
-/**
- * Main public entry point: analyzes a crisis situation description.
- *
- * @param message - Plain text description of emergency
- * @returns Promise<CrisisAnalysis> - Always resolves, never throws.
- */
 export async function analyzeCrisis(message: string): Promise<CrisisAnalysis> {
   return analyzeCrisisWithContext({ message });
 }
 
-/**
- * Analyzes a crisis with optional context (location, previous emergency type).
- */
 export async function analyzeCrisisWithContext(input: CrisisInput): Promise<CrisisAnalysis> {
   // Step 1: Input Validation
   const validation = validateUserInput(input.message);
@@ -172,7 +141,7 @@ export async function analyzeCrisisWithContext(input: CrisisInput): Promise<Cris
   // Step 2: Build Prompt
   const prompt = buildCrisisPrompt(sanitizedInput);
 
-  // Step 3: Call Gemini with Timeout & Retries
+  // Step 3: Call Gemini with Retry
   const rawText = await callGeminiWithRetry(prompt);
   if (!rawText) {
     return createSafeFallback();

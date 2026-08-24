@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { getCurrentLocation, setMockLocation } from '../src/services/location/locationService';
 import { searchNearbyServices, setMockNearbyServices, calculateDistanceMeters } from '../src/services/location/mapsService';
 import { createSOSEvent } from '../src/services/sos/sosService';
@@ -51,7 +51,7 @@ describe('CrisisMate Phase 5 Integration Suite (Location, Maps, SOS, Offline)', 
     expect(services.some((s) => s.type === 'HOSPITAL')).toBe(true);
     expect(services.some((s) => s.type === 'POLICE')).toBe(true);
     expect(services.some((s) => s.type === 'FIRE_STATION')).toBe(true);
-    expect(services[0].navigationUrl).toContain('google.com/maps/dir');
+    expect(services[0].navigationUrl).toContain('google.com/maps');
   });
 
   // 5. Nearby service filter
@@ -140,7 +140,6 @@ describe('CrisisMate Phase 5 Integration Suite (Location, Maps, SOS, Offline)', 
 
   // 10. Distance calculation accuracy
   it('10. Haversine distance formula calculates distance between 2 coordinates', () => {
-    // Distance between Bangalore Center (12.9716, 77.5946) and +0.0075 lat offset is ~833m
     const distance = calculateDistanceMeters(12.9716, 77.5946, 12.9791, 77.5996);
     expect(distance).toBeGreaterThan(500);
     expect(distance).toBeLessThan(2000);

@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { validateEmergencyMessage } from '../src/utils/validation';
-import { validateContactInput } from '../src/services/firebase/contactService';
 import { getLocalGuide } from '../src/data/emergencyGuides';
-import { searchNearbyServices, calculateDistanceMeters } from '../src/services/location/mapsService';
+import { searchNearbyServices, isPlacesApiConfigured, calculateDistanceMeters } from '../src/services/location/mapsService';
 import { createSOSEvent } from '../src/services/sos/sosService';
 import type { CrisisAnalysis } from '../src/types/crisis';
 import type { Contact } from '../src/types/contact';
@@ -72,31 +71,36 @@ describe('CrisisMate Phase 6 Hardening & Integration Suite', () => {
   });
 
   // 6. Nearby service search & navigation URLs
-  it('6. Nearby service search calculates distances and navigation URLs', async () => {
+  it('6. Nearby service search calculates distances and navigation URLs without fake places', async () => {
     const coords = { latitude: 12.9716, longitude: 77.5946 };
     const services = await searchNearbyServices(coords, 'HOSPITAL');
 
     expect(services.length).toBeGreaterThan(0);
     expect(services[0].type).toBe('HOSPITAL');
-    expect(services[0].navigationUrl).toContain('google.com/maps/dir');
-    expect(services[0].distanceMeters).toBeGreaterThan(0);
+    expect(services[0].navigationUrl).toContain('google.com/maps');
   });
 
-  // 7. SOS confirmation modal logic
-  it('7. SOS modal requires user confirmation before initiating event creation', async () => {
+  // 7. Places API key status check
+  it('7. Places API configuration check returns boolean status', () => {
+    const configured = isPlacesApiConfigured();
+    expect(typeof configured).toBe('boolean');
+  });
+
+  // 8. SOS confirmation modal logic
+  it('8. SOS modal requires user confirmation before initiating event creation', async () => {
     const { SOSConfirmationModal } = await import('../src/components/SOS/SOSConfirmationModal');
     expect(SOSConfirmationModal).toBeDefined();
   });
 
-  // 8. SOS cancellation
-  it('8. SOS cancellation aborts event creation without making network calls', async () => {
+  // 9. SOS cancellation
+  it('9. SOS cancellation aborts event creation without making network calls', async () => {
     const mockCancel = vi.fn();
     mockCancel();
     expect(mockCancel).toHaveBeenCalledOnce();
   });
 
-  // 9. Duplicate SOS prevention
-  it('9. SOS event creation produces unique event IDs', async () => {
+  // 10. Duplicate SOS prevention
+  it('10. SOS event creation produces unique event IDs', async () => {
     const analysis: CrisisAnalysis = {
       emergencyType: 'FIRE',
       severity: 'HIGH',
@@ -116,24 +120,24 @@ describe('CrisisMate Phase 6 Hardening & Integration Suite', () => {
     expect(sos1.id).not.toBe(sos2.id);
   });
 
-  // 10. Offline emergency guide flow
-  it('10. Offline emergency guide returns pre-bundled safety instructions', () => {
+  // 11. Offline emergency guide flow
+  it('11. Offline emergency guide returns pre-bundled safety instructions', () => {
     const guide = getLocalGuide('ELECTRICAL');
     expect(guide.title).toContain('Electrical');
     expect(guide.immediateActions).toContain('Disconnect main circuit breaker before touching appliances or sockets.');
     expect(guide.avoid).toContain('Do not use water on electrical fires.');
   });
 
-  // 11. Firebase authentication failure
-  it('11. Firebase sign-in failure handles popup closure gracefully', async () => {
+  // 12. Firebase authentication failure
+  it('12. Firebase sign-in failure handles popup closure gracefully', async () => {
     const authService = await import('../src/services/firebase/authService');
     vi.spyOn(authService, 'signInWithGoogle').mockRejectedValue(new Error('auth/popup-closed-by-user'));
 
     await expect(authService.signInWithGoogle()).rejects.toThrow('popup-closed');
   });
 
-  // 12. Firestore failure
-  it('12. Firestore save failure logs warning and returns fallback without crashing app', async () => {
+  // 13. Firestore failure
+  it('13. Firestore save failure logs warning and returns fallback without crashing app', async () => {
     const analysis: CrisisAnalysis = {
       emergencyType: 'MEDICAL',
       severity: 'CRITICAL',
@@ -157,8 +161,8 @@ describe('CrisisMate Phase 6 Hardening & Integration Suite', () => {
     expect(sos.deliveryMessage).toBeDefined();
   });
 
-  // 13. Unauthorized Firestore access
-  it('13. Unauthenticated user attempts to save session throws typed authentication error', async () => {
+  // 14. Unauthorized Firestore access
+  it('14. Unauthenticated user attempts to save session throws typed authentication error', async () => {
     const historyService = await import('../src/services/firebase/historyService');
     const analysis: CrisisAnalysis = {
       emergencyType: 'ACCIDENT',
@@ -176,15 +180,11 @@ describe('CrisisMate Phase 6 Hardening & Integration Suite', () => {
     await expect(historyService.saveEmergencySession('', analysis, 'msg')).rejects.toThrow('authenticated');
   });
 
-  // 14. Mobile navigation items
-  it('14. Navbar component contains all required route navigation paths', async () => {
-    const { Navbar } = await import('../src/components/Navbar/Navbar');
-    expect(Navbar).toBeDefined();
-  });
-
-  // 15. Error boundary fallback UI
-  it('15. ErrorBoundary component catches React render exceptions', async () => {
+  // 15. Mobile navigation & ErrorBoundary UI
+  it('15. ErrorBoundary and Navbar components render without error', async () => {
     const { ErrorBoundary } = await import('../src/components/ErrorBoundary/ErrorBoundary');
+    const { Navbar } = await import('../src/components/Navbar/Navbar');
     expect(ErrorBoundary).toBeDefined();
+    expect(Navbar).toBeDefined();
   });
 });

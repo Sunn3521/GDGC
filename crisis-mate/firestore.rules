@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for security validation
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User Profile collection & subcollections
+    match /users/{userId} {
+      // User can read and update their own user profile document
+      allow read, write: if isOwner(userId);
+
+      // Trusted Contacts subcollection rules
+      match /trustedContacts/{contactId} {
+        // Only the owner can manage their trusted contacts
+        allow read, write: if isOwner(userId);
+      }
+
+      // Emergency Sessions subcollection rules
+      match /emergencySessions/{sessionId} {
+        // Only the owner can store and read their emergency history
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Default deny rule for all other unlisted collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

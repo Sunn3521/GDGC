@@ -37,13 +37,28 @@ export function setGeminiExecutor(executor: GeminiExecutor | null): void {
 }
 
 /**
- * Gets the configured API key from server environment.
+ * Gets the configured API key safely from environment (Vite client or Node server).
  */
 function getApiKey(): string {
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env['GEMINI_API_KEY'] || process.env['VITE_GEMINI_API_KEY'] || '';
+  let viteKey = '';
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      viteKey = (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
+    }
+  } catch {
+    // Ignore error in non-Vite context
   }
-  return '';
+
+  let nodeKey = '';
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      nodeKey = process.env['GEMINI_API_KEY'] || process.env['VITE_GEMINI_API_KEY'] || '';
+    }
+  } catch {
+    // Ignore error in non-Node context
+  }
+
+  return viteKey || nodeKey;
 }
 
 // ─── Input Validation ─────────────────────────────────────────────────────────
@@ -71,7 +86,7 @@ async function executeGeminiCall(prompt: { systemInstruction: string; userTurn: 
 
   const apiKey = getApiKey();
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured in server environment.');
+    throw new Error('GEMINI_API_KEY is not configured in environment.');
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);

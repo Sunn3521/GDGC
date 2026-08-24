@@ -88,9 +88,12 @@ export const HistoryPage: React.FC = () => {
           ) : (
             <div className="space-y-3">
               {history.map((session) => {
-                const analysis = session.analysis;
-                const emoji = getEmergencyEmoji(analysis.emergencyType);
-                const typeLabel = formatEmergencyType(analysis.emergencyType);
+                const emergencyType = session.emergencyType || session.analysis?.emergencyType || 'OTHER';
+                const severity = session.severity || session.analysis?.severity || 'MEDIUM';
+                const summary = session.summary || session.analysis?.summary || 'Emergency session recorded.';
+                const actions = session.immediateActions || session.analysis?.immediateActions || [];
+                const emoji = getEmergencyEmoji(emergencyType);
+                const typeLabel = formatEmergencyType(emergencyType);
 
                 return (
                   <div
@@ -103,13 +106,13 @@ export const HistoryPage: React.FC = () => {
                         <div>
                           <div className="font-bold text-white text-base">{typeLabel}</div>
                           <div className="text-xs text-gray-400">
-                            {session.startedAt ? formatTimestamp(session.startedAt) : 'Saved session'}
+                            {session.timestamp || session.startedAt ? formatTimestamp(session.timestamp || session.startedAt || '') : 'Saved session'}
                           </div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <SeverityBadge severity={analysis.severity} size="sm" />
+                        <SeverityBadge severity={severity} size="sm" />
                         <button
                           onClick={() => session.id && handleDelete(session.id)}
                           className="p-1.5 text-xs text-red-400 hover:text-red-300 bg-[#0f0f1a] rounded border border-[#2d2d44]"
@@ -120,13 +123,13 @@ export const HistoryPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <p className="text-sm text-gray-200 font-medium">{analysis.summary}</p>
+                    <p className="text-sm text-gray-200 font-medium">{summary}</p>
 
-                    {analysis.immediateActions && analysis.immediateActions.length > 0 && (
+                    {actions && actions.length > 0 && (
                       <div className="text-xs bg-[#0f0f1a] p-3 rounded-lg border border-[#2d2d44] space-y-1">
                         <div className="font-bold text-green-400">Priority Actions Taken:</div>
                         <ul className="list-disc list-inside text-gray-300 space-y-0.5">
-                          {analysis.immediateActions.slice(0, 3).map((act, i) => (
+                          {actions.slice(0, 3).map((act, i) => (
                             <li key={i}>{act}</li>
                           ))}
                         </ul>

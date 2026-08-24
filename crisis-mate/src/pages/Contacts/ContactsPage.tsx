@@ -57,7 +57,7 @@ export const ContactsPage: React.FC = () => {
     setName(contact.name);
     setPhone(contact.phone);
     setRelationship(contact.relationship);
-    setIsPrimary(contact.isPrimary);
+    setIsPrimary(Boolean(contact.isPrimary));
     setIsFormOpen(true);
   };
 

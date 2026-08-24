@@ -1,9 +1,8 @@
 /**
  * CrisisMate — Firebase Client Configuration
  *
- * Initializes Firebase App, Auth, and Firestore services using environment variables.
- * Safe initialization: provides dummy fallback credentials for dev/offline testing
- * so app never crashes if environment variables are not yet configured.
+ * Initializes Firebase App, Auth, and Firestore services using environment variables
+ * with production fallbacks for the ideathaon Firebase project.
  */
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
@@ -33,12 +32,12 @@ function getEnvVar(key: string): string {
 }
 
 const firebaseConfig = {
-  apiKey: getEnvVar('VITE_FIREBASE_API_KEY') || 'AIzaSyDummyKeyForCrisisMateDevOnly',
-  authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN') || 'crisis-mate-dev.firebaseapp.com',
-  projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID') || 'crisis-mate-dev',
-  storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET') || 'crisis-mate-dev.appspot.com',
-  messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID') || '1234567890',
-  appId: getEnvVar('VITE_FIREBASE_APP_ID') || '1:1234567890:web:abcdef123456',
+  apiKey: getEnvVar('VITE_FIREBASE_API_KEY') || 'AIzaSyDte3qwO-k-KKUjTpJuglDyo4QYbMYLASg',
+  authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN') || 'ideathaon.firebaseapp.com',
+  projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID') || 'ideathaon',
+  storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET') || 'ideathaon.firebasestorage.app',
+  messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID') || '837910203253',
+  appId: getEnvVar('VITE_FIREBASE_APP_ID') || '1:837910203253:web:17bf1076a67ff12456e13c',
 };
 
 // Initialize Firebase App singleton

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import type { CrisisAnalysis } from '../../types/crisis';
 import { SeverityBadge } from '../../components/SeverityBadge/SeverityBadge';
@@ -6,13 +6,20 @@ import { ActionList } from '../../components/ActionList/ActionList';
 import { AvoidList } from '../../components/CrisisCard/AvoidList';
 import { formatEmergencyType, getEmergencyEmoji, formatConfidence } from '../../utils/formatting';
 import { INDIA_EMERGENCY_NUMBERS, UNIVERSAL_EMERGENCY } from '../../types/contact';
+import { useAuth } from '../../context/AuthContext';
+import { saveEmergencySession } from '../../services/firebase/historyService';
 
 export const AnalysisResultPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, signInWithGoogle } = useAuth();
 
   const state = location.state as { analysis?: CrisisAnalysis; userMessage?: string } | null;
   const analysis = state?.analysis;
+  const userMessage = state?.userMessage || 'Emergency reported.';
+
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   if (!analysis) {
     return (
@@ -29,6 +36,20 @@ export const AnalysisResultPage: React.FC = () => {
       </div>
     );
   }
+
+  const handleSaveSession = async () => {
+    if (!user) return;
+    setSaveStatus('saving');
+    setSaveError(null);
+
+    try {
+      await saveEmergencySession(user.uid, analysis, userMessage);
+      setSaveStatus('saved');
+    } catch (err) {
+      setSaveStatus('error');
+      setSaveError('Your emergency analysis is available, but we couldn\'t save the session to Firestore.');
+    }
+  };
 
   const emoji = getEmergencyEmoji(analysis.emergencyType);
   const typeLabel = formatEmergencyType(analysis.emergencyType);
@@ -114,34 +135,41 @@ export const AnalysisResultPage: React.FC = () => {
       {/* Avoid List */}
       <AvoidList avoidItems={analysis.avoid} />
 
-      {/* Maps & SOS Integration Readiness Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-2">
-          <div className="flex items-center gap-2 text-sm font-bold text-blue-400">
-            <span>📍</span> Nearby Emergency Services
+      {/* Firebase History Save Banner */}
+      <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+        {user ? (
+          <div className="flex items-center justify-between w-full">
+            <span className="text-xs text-gray-300">Save session to your private Firestore emergency history log.</span>
+            <button
+              onClick={handleSaveSession}
+              disabled={saveStatus === 'saving' || saveStatus === 'saved'}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                saveStatus === 'saved'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white'
+              }`}
+            >
+              {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Session Saved' : '💾 Save Session'}
+            </button>
           </div>
-          <p className="text-xs text-gray-400">
-            {analysis.needsLocation
-              ? 'Location lookup is recommended for this crisis.'
-              : 'Location lookup optional.'}
-          </p>
-          <div className="text-xs bg-[#0f0f1a] border border-[#2d2d44] p-2 rounded text-gray-400 font-mono">
-            Google Maps Integration Ready
+        ) : (
+          <div className="flex items-center justify-between w-full">
+            <span className="text-xs text-gray-400">Sign in to save this emergency session to your history.</span>
+            <button
+              onClick={() => signInWithGoogle()}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg"
+            >
+              Sign In to Save
+            </button>
           </div>
-        </div>
-
-        <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 space-y-2">
-          <div className="flex items-center gap-2 text-sm font-bold text-red-400">
-            <span>📡</span> SOS Emergency Alert
-          </div>
-          <p className="text-xs text-gray-400">
-            Send instant location alert to trusted contacts and responders.
-          </p>
-          <div className="text-xs bg-[#0f0f1a] border border-[#2d2d44] p-2 rounded text-gray-400 font-mono">
-            Firebase SOS Integration Ready
-          </div>
-        </div>
+        )}
       </div>
+
+      {saveError && (
+        <div className="p-3 bg-red-950/80 border border-red-500/40 text-red-300 text-xs font-semibold rounded-lg">
+          ⚠️ {saveError}
+        </div>
+      )}
 
       {/* Action Footer */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-[#2d2d44]">
@@ -153,10 +181,10 @@ export const AnalysisResultPage: React.FC = () => {
         </button>
 
         <Link
-          to="/guides"
+          to="/history"
           className="w-full sm:w-auto px-6 py-3 bg-[#1a1a2e] hover:bg-[#252542] border border-[#2d2d44] text-gray-200 font-bold rounded-xl transition-colors text-center"
         >
-          View Emergency Guides 📖
+          View Emergency History 📜
         </Link>
       </div>
     </div>

@@ -45,12 +45,12 @@ export async function createSOSEvent(options: SOSCreationOptions): Promise<SOSEv
     sosPayload.location = location;
   }
 
-  let generatedId = `sos_${Date.now()}`;
+  const randomSuffix = Math.random().toString(36).slice(2, 7);
+  let generatedId = `sos_${Date.now()}_${randomSuffix}`;
 
   if (userId) {
     try {
       const sosRef = collection(db, 'users', userId, 'sosEvents');
-      // Timeout Firestore write after 1.5s if offline/unauthenticated to prevent hanging
       const savePromise = addDoc(sosRef, sosPayload).then((ref) => ref.id);
       const timeoutPromise = new Promise<string>((_, reject) =>
         setTimeout(() => reject(new Error('Firestore write timeout')), 1500)

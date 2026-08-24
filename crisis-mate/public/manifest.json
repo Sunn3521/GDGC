@@ -1,0 +1,16 @@
+{
+  "name": "CrisisMate — AI Crisis Decision Engine",
+  "short_name": "CrisisMate",
+  "description": "AI-powered crisis decision support engine for emergencies.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#dc2626",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

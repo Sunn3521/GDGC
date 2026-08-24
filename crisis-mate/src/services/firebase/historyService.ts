@@ -31,13 +31,24 @@ export async function saveEmergencySession(
 
   try {
     const historyRef = getHistoryCollectionRef(userId);
+    const now = new Date().toISOString();
     const newSessionData: Omit<EmergencySession, 'id'> = {
       userId,
       userMessage,
+      userPrompt: userMessage,
+      emergencyType: analysis.emergencyType,
+      severity: analysis.severity,
+      summary: analysis.summary,
+      immediateActions: analysis.immediateActions,
+      avoidInstructions: analysis.avoid,
+      escalationRequired: analysis.escalationRequired,
+      needsLocation: analysis.needsLocation,
+      professionalHelpRecommended: analysis.professionalHelpRecommended,
       analysis,
       sosTrigger: false,
       locationActivated: analysis.needsLocation,
-      startedAt: new Date().toISOString(),
+      timestamp: now,
+      startedAt: now,
     };
 
     const docRef = await addDoc(historyRef, newSessionData);

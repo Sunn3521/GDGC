@@ -24,6 +24,11 @@ service cloud.firestore {
       match /emergencySessions/{sessionId} {
         allow read, write: if isOwner(userId);
       }
+
+      // SOS Events subcollection
+      match /sosEvents/{sosId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // Default deny all other collections

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar/Navbar';
+import { OfflineBanner } from './components/Offline/OfflineBanner';
 import { HomePage } from './pages/Home/HomePage';
 import { EmergencyInputPage } from './pages/EmergencyInput/EmergencyInputPage';
 import { AnalysisResultPage } from './pages/AnalysisResult/AnalysisResultPage';
@@ -15,6 +16,7 @@ const App: React.FC = () => {
     <AuthProvider>
       <BrowserRouter>
         <div className="min-h-screen bg-[#0f0f1a] text-[#e8e8f0] font-sans flex flex-col">
+          <OfflineBanner />
           <Navbar />
           <main className="flex-1">
             <Routes>

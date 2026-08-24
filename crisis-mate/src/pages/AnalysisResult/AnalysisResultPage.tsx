@@ -8,6 +8,8 @@ import { formatEmergencyType, getEmergencyEmoji, formatConfidence } from '../../
 import { INDIA_EMERGENCY_NUMBERS, UNIVERSAL_EMERGENCY } from '../../types/contact';
 import { useAuth } from '../../context/AuthContext';
 import { saveEmergencySession } from '../../services/firebase/historyService';
+import { NearbyHelp } from '../../components/Map/NearbyHelp';
+import { SOSButton } from '../../components/SOS/SOSButton';
 
 export const AnalysisResultPage: React.FC = () => {
   const location = useLocation();
@@ -134,6 +136,14 @@ export const AnalysisResultPage: React.FC = () => {
 
       {/* Avoid List */}
       <AvoidList avoidItems={analysis.avoid} />
+
+      {/* Nearby Emergency Services Component (Surface when needsLocation is true or HIGH/CRITICAL) */}
+      {(analysis.needsLocation || analysis.severity === 'HIGH' || analysis.severity === 'CRITICAL') && (
+        <NearbyHelp />
+      )}
+
+      {/* SOS System Activation Component */}
+      <SOSButton analysis={analysis} />
 
       {/* Firebase History Save Banner */}
       <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">

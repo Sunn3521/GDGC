@@ -25,7 +25,32 @@ interface CrisisAnalysis {
 
 ---
 
-## 2. Location & Maps Service API
+## 2. Firebase Backend Service API (`@/services/firebase`)
+
+### Authentication Service (`@/services/firebase/auth`)
+- `signInWithGoogle()`: Opens Google Sign-In popup and syncs/creates user profile in Firestore `users/{uid}`.
+- `signOutUser()`: Signs out currently logged in user.
+- `getCurrentUser()`: Synchronously returns current Auth user object or `null`.
+- `onAuthStateChange(callback)`: Registers a listener for authentication state changes.
+
+### User Profile Service (`@/services/firebase/userService`)
+- `getUserProfile(uid: string)`: Retrieves profile document from Firestore.
+- `createOrUpdateUserProfile(userData)`: Creates or merges user profile properties in `users/{uid}`.
+
+### Trusted Contact Service (`@/services/firebase/contactService`)
+- `addTrustedContact(userId: string, contactData)`: Adds trusted contact under `users/{userId}/trustedContacts/{contactId}`.
+- `getTrustedContacts(userId: string)`: Fetches trusted contacts for a user.
+- `updateTrustedContact(userId: string, contactId: string, updateData)`: Updates contact.
+- `deleteTrustedContact(userId: string, contactId: string)`: Deletes contact document.
+
+### Emergency History Service (`@/services/firebase/emergencyService`)
+- `saveEmergencySession(userId: string, sessionData)`: Saves emergency decision engine analysis result to Firestore.
+- `getEmergencyHistory(userId: string)`: Retrieves historical emergency sessions for user.
+- `getEmergencySession(userId: string, sessionId: string)`: Retrieves single session.
+
+---
+
+## 3. Location & Maps Service API
 
 ### `searchNearbyServices(coords: UserCoordinates, filter: EmergencyServiceType): Promise<NearbyService[]>`
 - **Request**: User GPS coordinates `{ latitude, longitude }`.
@@ -33,24 +58,8 @@ interface CrisisAnalysis {
 
 ---
 
-## 3. SOS Emergency Service API
+## 4. SOS Emergency Service API
 
 ### `createSOSEvent(options: SOSCreationOptions): Promise<SOSEvent>`
 - **Request**: `{ userId, analysis, location, contacts }`
-- **Response**:
-```typescript
-interface SOSEvent {
-  id: string;
-  userId?: string;
-  timestamp: string;
-  emergencyType: EmergencyType;
-  severity: SeverityLevel;
-  location?: UserCoordinates;
-  trustedContacts: Contact[];
-  status: 'COMPLETED';
-  deliveryMessage: string;
-  analysisSummary: string;
-  immediateActions: string[];
-}
-```
-*Delivery Message Truthfulness*: Returns *"SOS event recorded in Firestore. Live SMS dispatch is not configured."*
+- **Response**: SOSEvent object recording SOS state in Firestore.

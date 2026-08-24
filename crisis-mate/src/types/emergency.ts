@@ -1,57 +1,69 @@
+import type { CrisisAnalysis } from './crisis';
+
 /**
- * CrisisMate — Emergency Session & Input Types
- *
- * Types for emergency sessions (Firebase integration) and user input.
- * Firebase team (Member 3) can extend EmergencySession with Firestore document structure.
+ * Supported Emergency Categories
  */
-
-import type { CrisisAnalysis, EmergencyType, SeverityLevel } from './crisis';
-
-// ─── Emergency Session ────────────────────────────────────────────────────────
+export type EmergencyType =
+  | 'FIRE'
+  | 'MEDICAL'
+  | 'ACCIDENT'
+  | 'FLOOD'
+  | 'EARTHQUAKE'
+  | 'CYCLONE'
+  | 'ELECTRICAL'
+  | 'PERSONAL_SAFETY'
+  | 'OTHER';
 
 /**
- * An emergency session represents one user-initiated emergency interaction.
- * Can be persisted to Firestore by Member 3.
+ * Emergency Severity Levels
+ */
+export type SeverityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+/**
+ * Geo-location structure provided by Member 4 / Maps service
+ */
+export interface Location {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  address?: string;
+}
+
+/**
+ * Represents an Emergency Session stored under `users/{userId}/emergencySessions/{sessionId}`
  */
 export interface EmergencySession {
-  /** Firestore document ID (set by Firebase service) */
-  id?: string;
-
-  /** Authenticated user ID (set by Firebase Auth) */
-  userId?: string;
-
-  /** The original user message */
-  userMessage: string;
-
-  /** The AI analysis result */
-  analysis: CrisisAnalysis;
-
-  /** Whether SOS was triggered */
-  sosTrigger: boolean;
-
-  /** Whether location services were activated */
-  locationActivated: boolean;
-
-  /** Session start time (ISO string) */
-  startedAt: string;
-
-  /** Session end/resolve time */
+  id: string;
+  userId: string;
+  emergencyType: EmergencyType;
+  severity: SeverityLevel;
+  summary: string;
+  userPrompt?: string;
+  userMessage?: string;
+  immediateActions: string[];
+  avoidInstructions: string[];
+  escalationRequired: boolean;
+  needsLocation: boolean;
+  professionalHelpRecommended: boolean;
+  location?: Location | null;
+  timestamp: string; // ISO 8601 string
+  startedAt?: string;
   resolvedAt?: string;
-
-  /** User-reported outcome */
-  outcome?: 'RESOLVED' | 'ONGOING' | 'ESCALATED' | 'CANCELLED';
-
-  /** Device geolocation at time of emergency (if user consented) */
-  location?: {
-    latitude: number;
-    longitude: number;
-    accuracy: number;
-  };
+  sosTrigger?: boolean;
+  locationActivated?: boolean;
+  analysis?: CrisisAnalysis;
 }
+
+/**
+ * DTO for creating a new emergency session
+ */
+export type CreateEmergencySessionInput = Omit<EmergencySession, 'id' | 'timestamp'> & {
+  id?: string;
+  timestamp?: string;
+};
 
 // ─── Emergency Contact ────────────────────────────────────────────────────────
 
-/** Emergency contact types for the Contacts page (Member 2/3 integration) */
 export interface EmergencyContact {
   id: string;
   name: string;
@@ -62,7 +74,6 @@ export interface EmergencyContact {
 
 // ─── Emergency Guide ──────────────────────────────────────────────────────────
 
-/** Offline emergency guide entry (Member 4 integration) */
 export interface EmergencyGuide {
   type: EmergencyType;
   title: string;

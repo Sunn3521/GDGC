@@ -1,7 +1,5 @@
 /**
  * CrisisMate — Contact Types
- *
- * Types for emergency contacts and nearby services.
  */
 
 export type { NationalEmergencyNumbers } from '../data/emergencyNumbers';
@@ -9,17 +7,31 @@ export { INDIA_EMERGENCY_NUMBERS, DEFAULT_EMERGENCY_NUMBERS } from '../data/emer
 
 export const UNIVERSAL_EMERGENCY = '112';
 
-// ─── Personal Emergency Contact ───────────────────────────────────────────────
-
-export interface Contact {
+/**
+ * Represents a trusted emergency contact stored under `users/{userId}/trustedContacts/{contactId}`
+ */
+export interface TrustedContact {
   id: string;
   name: string;
   phone: string;
   relationship: string;
-  isPrimary: boolean;
-  addedAt: string;
-  userId?: string;
+  isPrimary?: boolean;
+  notes?: string;
+  createdAt: string; // ISO 8601 string
+  updatedAt: string; // ISO 8601 string
 }
+
+export type Contact = TrustedContact;
+
+/**
+ * Input format for creating a new trusted contact
+ */
+export type CreateTrustedContactInput = Omit<TrustedContact, 'id' | 'createdAt' | 'updatedAt'>;
+
+/**
+ * Input format for updating an existing trusted contact
+ */
+export type UpdateTrustedContactInput = Partial<CreateTrustedContactInput>;
 
 // ─── Nearby Emergency Service (Google Maps) ───────────────────────────────────
 

@@ -1,18 +1,23 @@
-/**
- * CrisisMate — AI Response Type Definitions
- *
- * These types represent the RAW Gemini API response structure BEFORE validation.
- * They are internal to the AI service layer and should NOT be exported to UI components.
- */
+import { EmergencyType, SeverityLevel } from './emergency';
 
-import type { EmergencyType, SeverityLevel } from './crisis';
+/**
+ * Structured Crisis Analysis response interface output by Gemini Decision Engine (Member 1)
+ */
+export interface CrisisAnalysis {
+  emergencyType: EmergencyType;
+  severity: SeverityLevel;
+  confidence: number;
+  summary: string;
+  immediateRisks: string[];
+  immediateActions: string[];
+  avoid: string[];
+  escalationRequired: boolean;
+  needsLocation: boolean;
+  professionalHelpRecommended: boolean;
+}
 
 // ─── Raw Gemini Response (unvalidated) ───────────────────────────────────────
 
-/**
- * The shape we EXPECT Gemini to return as JSON.
- * All fields are optional here because we cannot trust raw API output.
- */
 export interface RawGeminiResponse {
   emergencyType?: unknown;
   severity?: unknown;
